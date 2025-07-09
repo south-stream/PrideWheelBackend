@@ -1,0 +1,24 @@
+{
+  "name": "pride-wheel-backend",
+  "version": "1.0.0",
+  "description": "WebSocket server for Pride Wheel game that supports both ws and wss",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "build": "echo 'Build complete'"
+  },
+  "keywords": ["websocket", "game", "pride-wheel", "vercel"],
+  "author": "Fredrik",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.14.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
