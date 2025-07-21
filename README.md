@@ -25,17 +25,54 @@ WebSocket server for the Pride Wheel game that supports both ws and wss connecti
 npm install
 ```
 
+### Configuration
+
+Create a `.env` file based on `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+#### Host Configuration Options:
+
+1. **All interfaces (recommended for deployment):**
+
+   ```bash
+   # Don't set HOST/WS_HOST or set to 0.0.0.0
+   npm run dev
+   ```
+
+2. **Specific IP (for local network access):**
+
+   ```bash
+   # Set in .env file:
+   HOST=192.168.1.218
+   npm run dev
+   ```
+
+3. **Quick network access:**
+   ```bash
+   npm run dev:network
+   ```
+
 ### Running locally
 
 ```bash
+# Standard development (uses .env)
 npm run dev
+
+# Development with specific local config
+npm run dev:local
+
+# Development accessible from network
+npm run dev:network
 ```
 
-The server will start on `http://localhost:8080` with WebSocket endpoint at `ws://localhost:8080/ws`.
+The server will start on the configured port with WebSocket endpoint at `/ws`.
 
 ### Health Check
 
-Visit `http://localhost:8080/health` to check server status.
+Visit `http://localhost:3001/health` to check server status.
 
 ## Vercel Deployment
 
@@ -60,6 +97,7 @@ Set these environment variables in your Vercel dashboard:
 ### WebSocket Connection
 
 After deployment, your WebSocket URL will be:
+
 - WSS (secure): `wss://your-app-name.vercel.app/ws`
 - WS (development): `ws://localhost:8080/ws`
 
@@ -165,6 +203,7 @@ After deployment, your WebSocket URL will be:
 ## Monitoring
 
 The server logs all important events:
+
 - Client connections/disconnections
 - Room creation/deletion
 - Message handling

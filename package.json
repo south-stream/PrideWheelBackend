@@ -6,9 +6,16 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "dev:local": "nodemon --env-file=.env.local index.js",
+    "dev:network": "HOST=0.0.0.0 nodemon index.js",
     "build": "echo 'Build complete'"
   },
-  "keywords": ["websocket", "game", "pride-wheel", "vercel"],
+  "keywords": [
+    "websocket",
+    "game",
+    "pride-wheel",
+    "vercel"
+  ],
   "author": "Fredrik",
   "license": "MIT",
   "dependencies": {

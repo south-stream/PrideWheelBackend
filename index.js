@@ -14,7 +14,9 @@ const clients = new Map();
 
 // CORS configuration
 const corsOptions = {
-  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : "*",
+  origin: process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",")
+    : "*",
   credentials: true,
 };
 
@@ -279,49 +281,54 @@ function broadcastToRoom(roomId, message, excludeClientId = null) {
 // Create HTTP server with CORS support
 const server = http.createServer((req, res) => {
   // Enable CORS for all requests
-  res.setHeader('Access-Control-Allow-Origin', corsOptions.origin === '*' ? '*' : req.headers.origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader(
+    "Access-Control-Allow-Origin",
+    corsOptions.origin === "*" ? "*" : req.headers.origin || "*"
+  );
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     res.writeHead(200);
     res.end();
     return;
   }
 
   // Health check endpoint
-  if (req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ 
-      status: 'ok', 
-      timestamp: new Date().toISOString(),
-      activeRooms: gameRooms.size,
-      activeClients: clients.size
-    }));
+  if (req.url === "/health") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        activeRooms: gameRooms.size,
+        activeClients: clients.size,
+      })
+    );
     return;
   }
 
   // WebSocket upgrade handling
-  if (req.url === '/ws' || req.url === '/') {
-    res.writeHead(426, { 'Content-Type': 'text/plain' });
-    res.end('Upgrade Required');
+  if (req.url === "/ws" || req.url === "/") {
+    res.writeHead(426, { "Content-Type": "text/plain" });
+    res.end("Upgrade Required");
     return;
   }
 
   // Default response
-  res.writeHead(404, { 'Content-Type': 'text/plain' });
-  res.end('Not Found');
+  res.writeHead(404, { "Content-Type": "text/plain" });
+  res.end("Not Found");
 });
 
 // Create WebSocket server
-const wss = new WebSocket.Server({ 
+const wss = new WebSocket.Server({
   server,
-  path: '/ws',
+  path: "/ws",
   verifyClient: (info) => {
     // Add custom verification logic if needed
     return true;
-  }
+  },
 });
 
 // Handle WebSocket connections
@@ -332,33 +339,47 @@ if (isVercel) {
   // Export handler for Vercel
   module.exports = (req, res) => {
     // Handle HTTP requests
-    if (req.method === 'GET' && req.url === '/health') {
-      res.status(200).json({ 
-        status: 'ok', 
+    if (req.method === "GET" && req.url === "/health") {
+      res.status(200).json({
+        status: "ok",
         timestamp: new Date().toISOString(),
         activeRooms: gameRooms.size,
-        activeClients: clients.size
+        activeClients: clients.size,
       });
       return;
     }
 
     // Handle WebSocket upgrade
-    if (req.headers.upgrade === 'websocket') {
-      server.emit('upgrade', req, req.socket, Buffer.alloc(0));
+    if (req.headers.upgrade === "websocket") {
+      server.emit("upgrade", req, req.socket, Buffer.alloc(0));
       return;
     }
 
-    res.status(404).json({ error: 'Not Found' });
+    res.status(404).json({ error: "Not Found" });
   };
 } else {
   // Start server for local development
-  const PORT = process.env.PORT || process.env.WS_PORT || 8080;
-  const HOST = process.env.HOST || process.env.WS_HOST || "0.0.0.0";
-  
+  const PORT = process.env.PORT || process.env.WS_PORT || 3001;
+
+  // Auto-detect host: use specific IP for local development, 0.0.0.0 for general access
+  let HOST;
+  if (
+    process.env.NODE_ENV === "development" &&
+    (process.env.HOST || process.env.WS_HOST)
+  ) {
+    HOST = process.env.HOST || process.env.WS_HOST;
+  } else {
+    HOST = "0.0.0.0"; // Listen on all interfaces
+  }
+
   server.listen(PORT, HOST, () => {
     console.log(`🚀 WebSocket server running on ${HOST}:${PORT}`);
     console.log(`📡 WebSocket URL: ws://localhost:${PORT}/ws`);
-    console.log(`🌐 External WebSocket URL: ws://[YOUR_IP]:${PORT}/ws`);
+    if (HOST !== "0.0.0.0" && HOST !== "localhost") {
+      console.log(`🌐 External WebSocket URL: ws://${HOST}:${PORT}/ws`);
+    } else {
+      console.log(`🌐 External WebSocket URL: ws://[YOUR_IP]:${PORT}/ws`);
+    }
     console.log(`🎮 Ready for game connections!`);
     console.log(`🏥 Health check: http://localhost:${PORT}/health`);
   });
