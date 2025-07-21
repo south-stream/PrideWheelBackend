@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  pride-wheel-backend:
+    build: .
+    container_name: pride-wheel-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - ALLOWED_ORIGINS=http://localhost:3000,http://192.168.1.218:3000,https://your-frontend-domain.com
+    networks:
+      - pride-wheel-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "const http = require('http'); const options = { hostname: 'localhost', port: 3001, path: '/health', timeout: 5000 }; const req = http.request(options, (res) => { if (res.statusCode === 200) { process.exit(0); } else { process.exit(1); } }); req.on('error', () => process.exit(1)); req.end();",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      # Optional: mount logs directory for persistence
+      - ./logs:/app/logs
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pride-wheel.rule=Host(`pride-wheel.local`)"
+      - "traefik.http.services.pride-wheel.loadbalancer.server.port=3001"
+
+networks:
+  pride-wheel-network:
+    driver: bridge
