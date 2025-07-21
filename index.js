@@ -309,6 +309,13 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Root endpoint
+  if (req.url === "/" && req.method === "GET") {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("ok");
+    return;
+  }
+
   // WebSocket upgrade handling
   if (req.url === "/ws" || req.url === "/") {
     res.writeHead(426, { "Content-Type": "text/plain" });
@@ -346,6 +353,12 @@ if (isVercel) {
         activeRooms: gameRooms.size,
         activeClients: clients.size,
       });
+      return;
+    }
+
+    // Root endpoint
+    if (req.method === "GET" && req.url === "/") {
+      res.status(200).send("ok");
       return;
     }
 
