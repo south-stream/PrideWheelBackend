@@ -152,6 +152,11 @@ function handleMessage(clientId, message) {
       joinRoom(clientId, message.roomId, message.clientType);
       break;
 
+    case "handshake":
+      // Handle handshake messages (same as join)
+      joinRoom(clientId, message.roomId, message.clientType);
+      break;
+
     case "gameState":
       updateGameState(clientId, message.roomId, message.data);
       break;
@@ -252,8 +257,20 @@ function leaveRoom(clientId, roomId) {
 }
 
 function updateGameState(clientId, roomId, newState) {
+  if (!roomId) {
+    console.log(
+      `[ERROR] updateGameState called without roomId for client ${clientId}`
+    );
+    return;
+  }
+
   const room = gameRooms.get(roomId);
-  if (!room) return;
+  if (!room) {
+    console.log(
+      `[ERROR] Room ${roomId} not found for updateGameState from client ${clientId}`
+    );
+    return;
+  }
 
   // Update game state
   room.gameState = { ...room.gameState, ...newState, lastUpdate: Date.now() };
@@ -274,8 +291,20 @@ function updateGameState(clientId, roomId, newState) {
 }
 
 function broadcastCommand(clientId, roomId, commandData) {
+  if (!roomId) {
+    console.log(
+      `[ERROR] broadcastCommand called without roomId for client ${clientId}`
+    );
+    return;
+  }
+
   const room = gameRooms.get(roomId);
-  if (!room) return;
+  if (!room) {
+    console.log(
+      `[ERROR] Room ${roomId} not found for broadcastCommand from client ${clientId}`
+    );
+    return;
+  }
 
   room.lastActivity = Date.now();
 
@@ -296,26 +325,52 @@ function broadcastCommand(clientId, roomId, commandData) {
 
 function broadcastToRoom(roomId, message, excludeClientId = null) {
   const room = gameRooms.get(roomId);
-  if (!room) return;
+  if (!room) {
+    console.log(`[BROADCAST] Room ${roomId} not found`);
+    return;
+  }
+
+  console.log(
+    `[BROADCAST] Room ${roomId} has ${room.clients.size} clients: [${Array.from(
+      room.clients
+    ).join(", ")}]`
+  );
+  console.log(`[BROADCAST] Excluding client: ${excludeClientId}`);
 
   let sentCount = 0;
+  let totalClients = 0;
   const now = new Date().toISOString();
+
   for (const clientId of room.clients) {
-    if (clientId === excludeClientId) continue;
+    totalClients++;
+    if (clientId === excludeClientId) {
+      console.log(`[BROADCAST] Skipping excluded client: ${clientId}`);
+      continue;
+    }
 
     const client = clients.get(clientId);
-    if (client && client.ws.readyState === WebSocket.OPEN) {
-      try {
-        client.ws.send(JSON.stringify(message));
-        sentCount++;
-        // Log all outgoing messages with roomId, timestamp, and message
-        console.log(
-          `[OUT] [${now}] [room:${roomId}] to client:${clientId} ->`,
-          JSON.stringify(message)
-        );
-      } catch (error) {
-        console.error(`Error sending to client ${clientId}:`, error);
-      }
+    if (!client) {
+      console.log(`[BROADCAST] Client ${clientId} not found in clients map`);
+      continue;
+    }
+
+    if (client.ws.readyState !== WebSocket.OPEN) {
+      console.log(
+        `[BROADCAST] Client ${clientId} WebSocket not open (state: ${client.ws.readyState})`
+      );
+      continue;
+    }
+
+    try {
+      client.ws.send(JSON.stringify(message));
+      sentCount++;
+      // Log all outgoing messages with roomId, timestamp, and message
+      console.log(
+        `[OUT] [${now}] [room:${roomId}] to client:${clientId} ->`,
+        JSON.stringify(message)
+      );
+    } catch (error) {
+      console.error(`Error sending to client ${clientId}:`, error);
     }
   }
 
