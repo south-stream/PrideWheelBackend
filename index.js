@@ -459,6 +459,62 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Stop/Start endpoint - toggles wheel state based on current spinning status
+  if (req.url.startsWith("/toggle/") && req.method === "GET") {
+    const roomId = req.url.substring(8); // Remove "/toggle/" prefix
+
+    if (!roomId) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Room ID is required" }));
+      return;
+    }
+
+    const room = gameRooms.get(roomId);
+    if (!room) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: `Room ${roomId} not found` }));
+      return;
+    }
+
+    // Check current spinning status and determine action
+    const isCurrentlySpinning = room.gameState.isSpinning;
+    const action = isCurrentlySpinning ? "stop" : "start";
+
+    const command = {
+      action: action,
+      timestamp: Date.now(),
+    };
+
+    // Update room activity
+    room.lastActivity = Date.now();
+
+    console.log(
+      `HTTP ${action} command for room ${roomId} (was spinning: ${isCurrentlySpinning}):`,
+      command
+    );
+
+    // Broadcast the command to all clients in the room
+    broadcastToRoom(roomId, {
+      type: "command",
+      data: command,
+      fromClient: "http-api",
+      timestamp: Date.now(),
+    });
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        success: true,
+        roomId: roomId,
+        action: action,
+        wasSpinning: isCurrentlySpinning,
+        command: command,
+        clientCount: room.clients.size,
+      })
+    );
+    return;
+  }
+
   // Health check endpoint
   if (req.url === "/health") {
     res.writeHead(200, { "Content-Type": "application/json" });
