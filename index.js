@@ -344,7 +344,6 @@ function broadcastToRoom(roomId, message, excludeClientId = null) {
   for (const clientId of room.clients) {
     totalClients++;
     if (clientId === excludeClientId) {
-      console.log(`[BROADCAST] Skipping excluded client: ${clientId}`);
       continue;
     }
 
