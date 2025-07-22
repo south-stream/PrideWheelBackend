@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Live Log</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #111;
+            color: #eee;
+            margin: 0;
+            padding: 1em;
+        }
+
+        #log {
+            white-space: pre-wrap;
+            overflow-y: auto;
+            overflow-x: hidden;
+            height: 90vh;
+            background: #222;
+            padding: 1em;
+            border-radius: 8px;
+            border: 1px solid #444;
+            word-wrap: break-word;
+            word-break: break-all;
+        }
+
+        h1 {
+            font-size: 1.2em;
+            margin-bottom: 1em;
+        }
+
+        #status {
+            color: #0f0;
+            font-size: 0.9em;
+        }
+
+        .log-entry {
+            margin-bottom: 0.5em;
+            padding: 0.2em;
+        }
+
+        .log-entry pre {
+            margin: 0;
+            font-family: inherit;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            word-break: break-all;
+            overflow-wrap: break-word;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Live Log <span id='status'></span></h1>
+    <div id='log'></div>
+
+    <script>
+        const logDiv = document.getElementById('log');
+        const status = document.getElementById('status');
+        const es = new EventSource('/log/stream');
+
+        es.onopen = () => {
+            status.textContent = '[connected]';
+            status.style.color = '#0f0';
+        };
+
+        es.onerror = () => {
+            status.textContent = '[disconnected]';
+            status.style.color = '#f00';
+        };
+
+        es.onmessage = e => {
+            let data;
+            try {
+                data = JSON.parse(e.data);
+            } catch {
+                data = e.data;
+            }
+
+            // Format the data for display
+            let safe;
+            if (typeof data === 'object') {
+                safe = JSON.stringify(data, null, 2);
+            } else {
+                // Check if this is a log message with JSON at the end
+                const logStr = String(data);
+
+                // Look for JSON object at the end of the log message (after "->")
+                const jsonMatch = logStr.match(/-> (.+)$/);
+                if (jsonMatch) {
+                    try {
+                        const jsonPart = jsonMatch[1];
+                        const parsed = JSON.parse(jsonPart);
+                        // Replace the JSON part with pretty-printed version
+                        const logPrefix = logStr.substring(0, logStr.lastIndexOf('->') + 2);
+                        safe = logPrefix + '\n' + JSON.stringify(parsed, null, 2);
+                    } catch {
+                        // If JSON parsing fails, just escape HTML and display as is
+                        safe = logStr.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    }
+                } else {
+                    // Try to parse the entire string as JSON
+                    try {
+                        const parsed = JSON.parse(logStr);
+                        safe = JSON.stringify(parsed, null, 2);
+                    } catch {
+                        // If it's not JSON, just escape HTML and display as is
+                        safe = logStr.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    }
+                }
+            }
+
+            // Create new log entry
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            div.innerHTML = '<pre>' + safe + '</pre>';
+
+            logDiv.appendChild(div);
+            logDiv.scrollTop = logDiv.scrollHeight;
+
+            // Keep only last 1000 entries to prevent memory issues
+            while (logDiv.children.length > 1000) {
+                logDiv.removeChild(logDiv.firstChild);
+            }
+        };
+    </script>
+</body>
+
+</html>

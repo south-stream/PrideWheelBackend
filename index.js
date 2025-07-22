@@ -1,8 +1,44 @@
+// In-memory log buffer for real-time log viewing
+const LOG_BUFFER_SIZE = 500;
+const logBuffer = [];
+const logClients = new Set(); // For SSE clients
+
+function pushLog(line) {
+  logBuffer.push(line);
+  if (logBuffer.length > LOG_BUFFER_SIZE) logBuffer.shift();
+  // Send to all SSE clients
+  // Escape any problematic characters for SSE/HTML
+  function escapeForSSE(str) {
+    return String(str)
+      .replace(/\\/g, "\\\\")
+      .replace(/\r/g, "")
+      .replace(/\u2028|\u2029/g, "") // Remove line/paragraph separators
+      .replace(/\u0000/g, ""); // Remove null bytes
+  }
+  for (const res of logClients) {
+    try {
+      res.write(`data: ${escapeForSSE(line)}\n\n`, "utf8");
+      if (typeof res.flushHeaders === "function") res.flushHeaders();
+    } catch (e) {}
+  }
+}
+
+// Patch console.log to also push to logBuffer
+const origLog = console.log;
+console.log = (...args) => {
+  const line = args
+    .map((a) => (typeof a === "string" ? a : JSON.stringify(a)))
+    .join(" ");
+  pushLog(line);
+  origLog.apply(console, args);
+};
 const WebSocket = require("ws");
 const http = require("http");
 const https = require("https");
 const url = require("url");
 const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
 
 // Environment detection
 const isProduction = process.env.NODE_ENV === "production";
@@ -292,6 +328,68 @@ function broadcastToRoom(roomId, message, excludeClientId = null) {
 
 // Create HTTP server with CORS support
 const server = http.createServer((req, res) => {
+  // Real-time log HTML page
+  if (req.url === "/log" && req.method === "GET") {
+    try {
+      const htmlPath = path.join(__dirname, "log-viewer.html");
+      const htmlContent = fs.readFileSync(htmlPath, "utf8");
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(htmlContent);
+    } catch (error) {
+      console.error("Error reading log-viewer.html:", error);
+      res.writeHead(500, { "Content-Type": "text/plain" });
+      res.end("Error loading log viewer");
+    }
+    return;
+  }
+
+  // Real-time log SSE endpoint
+  if (req.url === "/log/stream" && req.method === "GET") {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "Access-Control-Allow-Origin": "*",
+    });
+    if (typeof res.flushHeaders === "function") res.flushHeaders();
+    // Send recent log buffer
+    for (const line of logBuffer) {
+      // Use the same escaping as pushLog
+      function escapeForSSE(str) {
+        return String(str)
+          .replace(/\\/g, "\\\\")
+          .replace(/\r/g, "")
+          .replace(/\n/g, " ")
+          .replace(/\u2028|\u2029/g, "")
+          .replace(/\u0000/g, "");
+      }
+      res.write(`data: ${escapeForSSE(line)}\n\n`, "utf8");
+    }
+    // Test log for new connection
+    const testMsg = `[LOG] SSE client connected to /log/stream at ${new Date().toISOString()}`;
+    function escapeForSSE(str) {
+      return String(str)
+        .replace(/\\/g, "\\\\")
+        .replace(/\r/g, "")
+        .replace(/\n/g, " ")
+        .replace(/\u2028|\u2029/g, "")
+        .replace(/\u0000/g, "");
+    }
+    res.write(`data: ${escapeForSSE(testMsg)}\n\n`, "utf8");
+    // Heartbeat to keep connection alive
+    const heartbeat = setInterval(() => {
+      res.write(":heartbeat\n\n");
+    }, 15000);
+    logClients.add(res);
+    console.log(testMsg);
+    req.on("close", () => {
+      logClients.delete(res);
+      clearInterval(heartbeat);
+      const discMsg = `[LOG] SSE client disconnected from /log/stream at ${new Date().toISOString()}`;
+      console.log(discMsg);
+    });
+    return;
+  }
   // Enable CORS for all requests
   res.setHeader(
     "Access-Control-Allow-Origin",
