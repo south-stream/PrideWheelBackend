@@ -1,6 +1,6 @@
 # Pride Wheel Backend
 
-WebSocket server for the Pride Wheel game that supports both ws and wss connections, optimized for Vercel deployment.
+WebSocket server for the Pride Wheel game that supports both ws and wss connections.
 
 ## Features
 
@@ -8,7 +8,6 @@ WebSocket server for the Pride Wheel game that supports both ws and wss connecti
 - 🏠 Game room management
 - 🎮 Game state synchronization
 - 🔒 Support for both ws and wss protocols
-- 🌐 Vercel deployment ready
 - 🏥 Health check endpoint
 - 🧹 Automatic room cleanup
 
@@ -73,33 +72,6 @@ The server will start on the configured port with WebSocket endpoint at `/ws`.
 ### Health Check
 
 Visit `http://localhost:3001/health` to check server status.
-
-## Vercel Deployment
-
-### Prerequisites
-
-1. Install Vercel CLI: `npm i -g vercel`
-2. Login to Vercel: `vercel login`
-
-### Deploy
-
-```bash
-vercel
-```
-
-### Environment Variables
-
-Set these environment variables in your Vercel dashboard:
-
-- `NODE_ENV`: Set to `production`
-- `ALLOWED_ORIGINS`: Comma-separated list of allowed origins (optional, defaults to `*`)
-
-### WebSocket Connection
-
-After deployment, your WebSocket URL will be:
-
-- WSS (secure): `wss://your-app-name.vercel.app/ws`
-- WS (development): `ws://localhost:8080/ws`
 
 ## API Endpoints
 

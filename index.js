@@ -103,7 +103,13 @@ function handleMessage(clientId, message) {
   const client = clients.get(clientId);
   if (!client) return;
 
-  console.log(`Message from ${clientId}:`, message.type);
+  // Log all incoming messages with roomId, timestamp, and message
+  const now = new Date().toISOString();
+  const roomId = message.roomId || (client && client.roomId) || "-";
+  console.log(
+    `[IN] [${now}] [room:${roomId}] from client:${clientId} ->`,
+    JSON.stringify(message)
+  );
 
   switch (message.type) {
     case "join":
@@ -257,6 +263,7 @@ function broadcastToRoom(roomId, message, excludeClientId = null) {
   if (!room) return;
 
   let sentCount = 0;
+  const now = new Date().toISOString();
   for (const clientId of room.clients) {
     if (clientId === excludeClientId) continue;
 
@@ -265,6 +272,11 @@ function broadcastToRoom(roomId, message, excludeClientId = null) {
       try {
         client.ws.send(JSON.stringify(message));
         sentCount++;
+        // Log all outgoing messages with roomId, timestamp, and message
+        console.log(
+          `[OUT] [${now}] [room:${roomId}] to client:${clientId} ->`,
+          JSON.stringify(message)
+        );
       } catch (error) {
         console.error(`Error sending to client ${clientId}:`, error);
       }
